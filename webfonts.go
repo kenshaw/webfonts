@@ -21,7 +21,7 @@ import (
 	gfonts "google.golang.org/api/webfonts/v1"
 )
 
-// Available retrieves the available font families.
+// Available retrieves all available webfonts.
 func Available(ctx context.Context, opts ...ClientOption) ([]*gfonts.Webfont, error) {
 	return NewClient(opts...).Available(ctx)
 }

@@ -131,7 +131,7 @@ func (cl *Client) buildService(ctx context.Context) error {
 	return err
 }
 
-// Available retrieves all webfonts.
+// Available retrieves all available webfonts.
 func (cl *Client) Available(ctx context.Context) ([]*gfonts.Webfont, error) {
 	// init
 	if err := cl.init(ctx); err != nil {
@@ -141,7 +141,7 @@ func (cl *Client) Available(ctx context.Context) ([]*gfonts.Webfont, error) {
 		return nil, errors.New("service uninitialized")
 	}
 	// retrieve
-	res, err := cl.svc.Webfonts.List().Do()
+	res, err := cl.svc.Webfonts.List().Context(ctx).Do()
 	if err != nil {
 		return nil, err
 	}
