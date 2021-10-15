@@ -204,8 +204,14 @@ func (cl *Client) AllFontFaces(ctx context.Context, family string, opts ...Query
 	// build query
 	q := NewQuery(family, opts...)
 	var ff []FontFace
-	for _, typ := range []string{"eot", "svg", "ttf", "woff2", "woff"} {
-		fonts, err := cl.get(ctx, q.String(), userAgents[typ])
+	for _, userAgent := range []string{
+		UserAgentEOT,
+		UserAgentSVG,
+		UserAgentTTF,
+		UserAgentWOFF2,
+		UserAgentWOFF,
+	} {
+		fonts, err := cl.get(ctx, q.String(), userAgent)
 		if err != nil {
 			return nil, err
 		}
@@ -345,12 +351,11 @@ func WithEffects(effects ...string) QueryOption {
 	}
 }
 
-// userAgents are user agents that force the service to return paths for
-// different file types.
-var userAgents = map[string]string{
-	"eot":   "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1; Trident/4.0)",
-	"svg":   "Mozilla/4.0 (iPad; CPU OS 4_0_1 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/4.1 Mobile/9A405 Safari/7534.48.3",
-	"ttf":   "Mozilla/5.0 (Unknown; Linux x86_64) AppleWebKit/538.1 (KHTML, like Gecko) Safari/538.1 Daum/4.1",
-	"woff2": "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0",
-	"woff":  "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:27.0) Gecko/20100101 Firefox/27.0",
-}
+// User agents.
+const (
+	UserAgentEOT   = "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1; Trident/4.0)"
+	UserAgentSVG   = "Mozilla/4.0 (iPad; CPU OS 4_0_1 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/4.1 Mobile/9A405 Safari/7534.48.3"
+	UserAgentTTF   = "Mozilla/5.0 (Unknown; Linux x86_64) AppleWebKit/538.1 (KHTML, like Gecko) Safari/538.1 Daum/4.1"
+	UserAgentWOFF2 = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0"
+	UserAgentWOFF  = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:27.0) Gecko/20100101 Firefox/27.0"
+)
