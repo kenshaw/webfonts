@@ -2,6 +2,9 @@
   font-family: '{{ .family }}';
   font-style: {{ .style }};
   font-weight: {{ .weight }};
+{{- if .stretch }}
+  font-stretch: {{ .stretch }};
+{{- end }}
 {{- if .old }}
   src: url('{{ .paths.eot }}');
 {{- end }}

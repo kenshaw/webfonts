@@ -39,13 +39,14 @@ func AllFontFaces(ctx context.Context, family string, opts ...ClientOption) ([]F
 
 // FontFace describes a font face.
 type FontFace struct {
-	Subset string   `json:"subset,omitempty"`
-	Family string   `json:"font-family,omitempty"`
-	Style  string   `json:"font-style,omitempty"`
-	Weight string   `json:"font-weight,omitempty"`
-	Src    string   `json:"src,omitempty"`
-	Format string   `json:"format,omitempty"`
-	Range  []string `json:"unicode-range,omitempty"`
+	Subset  string   `json:"subset,omitempty"`
+	Family  string   `json:"font-family,omitempty"`
+	Style   string   `json:"font-style,omitempty"`
+	Weight  string   `json:"font-weight,omitempty"`
+	Stretch string   `json:"font-stretch,omitempty"`
+	Src     string   `json:"src,omitempty"`
+	Format  string   `json:"format,omitempty"`
+	Range   []string `json:"unicode-range,omitempty"`
 }
 
 // FontFacesFromStylesheetReader parses stylesheet from the passed reader,
@@ -90,6 +91,8 @@ func FontFacesFromStylesheetReader(r io.Reader) ([]FontFace, error) {
 				for i := 0; i < len(font.Range); i++ {
 					font.Range[i] = strings.TrimSpace(font.Range[i])
 				}
+			case "font-stretch":
+				font.Stretch = style.Value.Text()
 			default:
 				return nil, fmt.Errorf("unknown @font-face property %q", style.Property)
 			}
