@@ -3,7 +3,6 @@ package webfonts
 import (
 	"context"
 	"crypto/md5"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -103,7 +102,7 @@ func (cl *Client) buildUserAgent(ctx context.Context) error {
 	return nil
 }
 
-// buildService builds the webfonts service.
+// buildService builds the google webfonts service.
 func (cl *Client) buildService(ctx context.Context) error {
 	if cl.svc != nil {
 		return nil
@@ -131,14 +130,14 @@ func (cl *Client) buildService(ctx context.Context) error {
 	return err
 }
 
-// Available retrieves all available webfonts.
+// Available retrieves all available webfonts from the google webfonts service.
 func (cl *Client) Available(ctx context.Context) ([]*gfonts.Webfont, error) {
 	// init
 	if err := cl.init(ctx); err != nil {
 		return nil, err
 	}
 	if cl.svc == nil {
-		return nil, errors.New("service uninitialized")
+		return nil, ErrServiceUninitialized
 	}
 	// retrieve
 	res, err := cl.svc.Webfonts.List().Context(ctx).Do()
@@ -150,7 +149,10 @@ func (cl *Client) Available(ctx context.Context) ([]*gfonts.Webfont, error) {
 
 // get retrieves a stylesheet from the url using the specified user agent,
 // return any parsed font faces contained in the stylesheet.
-func (cl *Client) get(ctx context.Context, urlstr, userAgent string) ([]FontFace, error) {
+//
+// Adds &_=<md5hash(userAgent)[:5]> to the query request to ensure request
+// traverses transport caching.
+func (cl *Client) get(ctx context.Context, urlstr, userAgent string) ([]Font, error) {
 	// build request
 	urlstr += "&_=" + fmt.Sprintf("%x", md5.Sum([]byte(userAgent)))[:5]
 	req, err := http.NewRequest("GET", urlstr, nil)
@@ -166,20 +168,21 @@ func (cl *Client) get(ctx context.Context, urlstr, userAgent string) ([]FontFace
 	defer res.Body.Close()
 	// check status
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("status code %d != 200", res.StatusCode)
+		return nil, ErrStatusNotOK
 	}
 	// parse
-	return FontFacesFromStylesheetReader(res.Body)
+	return FontsFromStylesheetReader(res.Body)
 }
 
-// FontFaces retrieves the font faces for the specified family.
-func (cl *Client) FontFaces(ctx context.Context, family string, opts ...QueryOption) ([]FontFace, error) {
+// Faces retrieves the font faces for the specified family, building a query
+// using the client's user agent and passed options.
+func (cl *Client) Faces(ctx context.Context, family string, opts ...QueryOption) ([]Font, error) {
 	// initialize
 	if err := cl.init(ctx); err != nil {
 		return nil, err
 	}
 	if cl.cl == nil {
-		return nil, errors.New("client uninitialized")
+		return nil, ErrClientUninitialized
 	}
 	// build query
 	q := NewQuery(family, opts...)
@@ -191,19 +194,19 @@ func (cl *Client) FontFaces(ctx context.Context, family string, opts ...QueryOpt
 	return cl.get(ctx, q.String(), userAgent)
 }
 
-// AllFontFaces retrieves all font faces for the specified family by using
-// multiple user agents.
-func (cl *Client) AllFontFaces(ctx context.Context, family string, opts ...QueryOption) ([]FontFace, error) {
+// All retrieves all common font faces for the specified family by using
+// multiple user agents (EOT, SVG, TTF, WOFF2, WOFF).
+func (cl *Client) All(ctx context.Context, family string, opts ...QueryOption) ([]Font, error) {
 	// initialize
 	if err := cl.init(ctx); err != nil {
 		return nil, err
 	}
 	if cl.cl == nil {
-		return nil, errors.New("client uninitialized")
+		return nil, ErrClientUninitialized
 	}
 	// build query
 	q := NewQuery(family, opts...)
-	var ff []FontFace
+	var faces []Font
 	for _, userAgent := range []string{
 		UserAgentEOT,
 		UserAgentSVG,
@@ -215,9 +218,71 @@ func (cl *Client) AllFontFaces(ctx context.Context, family string, opts ...Query
 		if err != nil {
 			return nil, err
 		}
-		ff = append(ff, fonts...)
+		faces = append(faces, fonts...)
 	}
-	return ff, nil
+	return faces, nil
+}
+
+// Format retrieves a font face with the specified format and family.
+func (cl *Client) Format(ctx context.Context, family, format string, opts ...QueryOption) (Font, error) {
+	// initialize
+	if err := cl.init(ctx); err != nil {
+		return Font{}, err
+	}
+	if cl.cl == nil {
+		return Font{}, ErrClientUninitialized
+	}
+	var userAgent string
+	switch format {
+	case "eot":
+		userAgent = UserAgentEOT
+	case "svg":
+		userAgent = UserAgentSVG
+	case "ttf":
+		userAgent = UserAgentTTF
+	case "woff2":
+		userAgent = UserAgentWOFF2
+	case "woff":
+		userAgent = UserAgentWOFF
+	default:
+		return Font{}, ErrFormatNotAvailable
+	}
+	// build query
+	fonts, err := cl.get(ctx, NewQuery(family, opts...).String(), userAgent)
+	if err != nil {
+		return Font{}, nil
+	}
+	for _, font := range fonts {
+		if font.Format == format {
+			return font, nil
+		}
+	}
+	return Font{}, ErrFormatNotAvailable
+}
+
+// EOT retrieves the eot font face for the specified family.
+func (cl *Client) EOT(ctx context.Context, family string, opts ...QueryOption) (Font, error) {
+	return cl.Format(ctx, family, "eot", opts...)
+}
+
+// SVG retrieves the svg font face for the specified family.
+func (cl *Client) SVG(ctx context.Context, family string, opts ...QueryOption) (Font, error) {
+	return cl.Format(ctx, family, "svg", opts...)
+}
+
+// TTF retrieves the ttf font face for the specified family.
+func (cl *Client) TTF(ctx context.Context, family string, opts ...QueryOption) (Font, error) {
+	return cl.Format(ctx, family, "ttf", opts...)
+}
+
+// WOFF2 retrieves the woff2 font face for the specified family.
+func (cl *Client) WOFF2(ctx context.Context, family string, opts ...QueryOption) (Font, error) {
+	return cl.Format(ctx, family, "woff2", opts...)
+}
+
+// WOFF retrieves the woff font face for the specified family.
+func (cl *Client) WOFF(ctx context.Context, family string, opts ...QueryOption) (Font, error) {
+	return cl.Format(ctx, family, "woff", opts...)
 }
 
 // Query wraps a font request.
@@ -228,6 +293,9 @@ type Query struct {
 	Subsets   []string
 	Styles    []string
 	Effects   []string
+	Directory string
+	Display   string
+	Text      string
 }
 
 // NewQuery builds a new webfont query.
@@ -255,6 +323,15 @@ func (q *Query) Values() url.Values {
 	}
 	if q.Effects != nil {
 		v["effect"] = []string{strings.Join(q.Effects, "|")}
+	}
+	if q.Directory != "" {
+		v["directory"] = []string{q.Directory}
+	}
+	if q.Display != "" {
+		v["display"] = []string{q.Display}
+	}
+	if q.Text != "" {
+		v["text"] = []string{q.Text}
 	}
 	return v
 }
@@ -299,7 +376,7 @@ func WithClientOption(opt option.ClientOption) ClientOption {
 	}
 }
 
-// WithKey is a webfonts client option to set the webfonts api key.
+// WithKey is a webfonts client option to set the google webfonts api key.
 func WithKey(key string) ClientOption {
 	return func(cl *Client) {
 		cl.key = key
@@ -351,6 +428,27 @@ func WithEffects(effects ...string) QueryOption {
 	}
 }
 
+// WithDirectory is a query option to set directory.
+func WithDirectory(directory string) QueryOption {
+	return func(q *Query) {
+		q.Directory = directory
+	}
+}
+
+// WithDisplay is a query option to set display.
+func WithDisplay(display string) QueryOption {
+	return func(q *Query) {
+		q.Display = display
+	}
+}
+
+// WithText is a query option to set text.
+func WithText(text string) QueryOption {
+	return func(q *Query) {
+		q.Text = text
+	}
+}
+
 // User agents.
 const (
 	UserAgentEOT   = "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1; Trident/4.0)"
@@ -358,4 +456,20 @@ const (
 	UserAgentTTF   = "Mozilla/5.0 (Unknown; Linux x86_64) AppleWebKit/538.1 (KHTML, like Gecko) Safari/538.1 Daum/4.1"
 	UserAgentWOFF2 = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0"
 	UserAgentWOFF  = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:27.0) Gecko/20100101 Firefox/27.0"
+)
+
+// Error is a client error.
+type Error string
+
+// Error satisfies the error interface.
+func (err Error) Error() string {
+	return string(err)
+}
+
+// Errors.
+const (
+	ErrServiceUninitialized Error = "service uninitialized"
+	ErrClientUninitialized  Error = "client uninitialized"
+	ErrStatusNotOK          Error = "status not ok"
+	ErrFormatNotAvailable   Error = "format not available"
 )
