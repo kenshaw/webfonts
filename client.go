@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/chromedp/omahaproxy"
+	"github.com/chromedp/verhist"
 	"github.com/kenshaw/diskcache"
 	"github.com/kenshaw/httplog"
 	"golang.org/x/oauth2"
@@ -90,16 +90,9 @@ func (cl *Client) buildUserAgent(ctx context.Context) error {
 	if cl.userAgent != "" {
 		return nil
 	}
-	// retrieve latest chrome version
-	ver, err := omahaproxy.New(
-		omahaproxy.WithTransport(cl.transport),
-	).Latest(ctx, "linux", "stable")
-	if err != nil {
-		return err
-	}
-	// build user agent
-	cl.userAgent = fmt.Sprintf("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/%s Safari/537.36", ver.Version)
-	return nil
+	var err error
+	cl.userAgent, err = verhist.UserAgent(ctx, "linux", "stable", verhist.WithTransport(cl.transport))
+	return err
 }
 
 // buildService builds the google webfonts service.
