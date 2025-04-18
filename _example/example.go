@@ -61,7 +61,7 @@ func run(ctx context.Context, verbose bool, addr, key, text, prefix string, allo
 			continue
 		}
 		fmt.Printf("retrieving: %s", font.Family)
-		face, err := cl.WOFF2(ctx, font.Family, webfonts.WithDisplay("block"), webfonts.WithText(text))
+		face, err := cl.WOFF2(ctx, font.Family, webfonts.WithDisplay("block"), webfonts.WithText(font.Family+" "+text))
 		if err != nil {
 			return err
 		}
