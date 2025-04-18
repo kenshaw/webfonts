@@ -3,7 +3,6 @@ package webfonts
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"path"
 	"regexp"
@@ -29,7 +28,7 @@ type Font struct {
 // returning any parsed font face.
 func FontsFromStylesheetReader(r io.Reader) ([]Font, error) {
 	// load
-	buf, err := ioutil.ReadAll(r)
+	buf, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +72,7 @@ func FontsFromStylesheetReader(r io.Reader) ([]Font, error) {
 				}
 			default:
 				panic(fmt.Sprintf("unknown @font-face property %q", style.Property))
-				return nil, fmt.Errorf("unknown @font-face property %q", style.Property)
+				// return nil, fmt.Errorf("unknown @font-face property %q", style.Property)
 			}
 		}
 		fonts = append(fonts, font)

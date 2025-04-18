@@ -99,7 +99,7 @@ func process(w io.Writer, prefix, family, style, weight string, families map[str
 		}
 	}
 	// execute
-	if err := tpl.Execute(w, map[string]interface{}{
+	if err := tpl.Execute(w, map[string]any{
 		"family":  family,
 		"style":   style,
 		"weight":  weight,

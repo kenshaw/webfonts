@@ -4,11 +4,13 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"sort"
@@ -23,7 +25,7 @@ import (
 func main() {
 	verbose := flag.Bool("v", false, "verbose")
 	addr := flag.String("l", ":9090", "listen")
-	key := flag.String("k", "", "webfonts key")
+	key := flag.String("key", "", "webfonts key")
 	text := flag.String("text", "Lorem Ipsum Dolor", "text")
 	prefix := flag.String("prefix", "/_/", "prefix")
 	flag.Parse()
@@ -34,6 +36,9 @@ func main() {
 }
 
 func run(ctx context.Context, verbose bool, addr, key, text, prefix string, allowed ...string) error {
+	if key == "" {
+		return errors.New("must provide -key\n\n  see: https://developers.google.com/fonts/docs/developer_api\n")
+	}
 	// create cache transport
 	cache, err := buildCache(verbose)
 	if err != nil {
@@ -141,13 +146,13 @@ func (s *Server) build(ctx context.Context, prefix string, fonts []webfonts.Font
 			if err != nil {
 				return err
 			}
-			s.HandleFunc(path.Join(prefix, route.Path), func(res http.ResponseWriter, req *http.Request) {
+			s.HandleFunc(path.Join(prefix, url.PathEscape(route.Path)), func(res http.ResponseWriter, req *http.Request) {
 				res.Header().Set("Content-Type", contentType)
 				_, _ = res.Write(buf)
 			})
 		}
 		// stylesheet
-		stylesheetPath := path.Join(prefix, family) + ".css"
+		stylesheetPath := path.Join(prefix, url.PathEscape(family+".css"))
 		s.HandleFunc(stylesheetPath, func(res http.ResponseWriter, req *http.Request) {
 			res.Header().Set("Content-Type", "text/css")
 			_, _ = res.Write(buf)
@@ -172,7 +177,7 @@ func get(ctx context.Context, urlstr string, transport http.RoundTripper) (strin
 		return "", nil, err
 	}
 	defer res.Body.Close()
-	buf, err := ioutil.ReadAll(res.Body)
+	buf, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", nil, err
 	}

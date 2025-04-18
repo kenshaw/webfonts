@@ -50,7 +50,7 @@ func NewClient(opts ...ClientOption) *Client {
 func (cl *Client) init(ctx context.Context) error {
 	var err error
 	cl.once.Do(func() {
-		if err = cl.buildTransport(ctx); err != nil {
+		if err = cl.buildTransport(); err != nil {
 			return
 		}
 		if err = cl.buildUserAgent(ctx); err != nil {
@@ -64,7 +64,7 @@ func (cl *Client) init(ctx context.Context) error {
 }
 
 // buildTransport builds the http client used for retrievals.
-func (cl *Client) buildTransport(ctx context.Context) error {
+func (cl *Client) buildTransport() error {
 	if cl.appCacheDir != "" {
 		var err error
 		cl.transport, err = diskcache.New(
@@ -329,7 +329,7 @@ func (q *Query) Values() url.Values {
 	return v
 }
 
-// String satisfies the fmt.Stringer interface.
+// String satisfies the [fmt.Stringer] interface.
 //
 // Returns the URL for the request.
 func (q *Query) String() string {
@@ -348,7 +348,7 @@ func WithTransport(transport http.RoundTripper) ClientOption {
 
 // WithLogf is a webfonts client option to set a log handler for http requests and
 // responses.
-func WithLogf(logf interface{}, opts ...httplog.Option) ClientOption {
+func WithLogf(logf any, opts ...httplog.Option) ClientOption {
 	return func(cl *Client) {
 		cl.transport = httplog.NewPrefixedRoundTripLogger(cl.transport, logf, opts...)
 	}
